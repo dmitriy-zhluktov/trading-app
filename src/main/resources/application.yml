@@ -1,0 +1,7 @@
+bybit:
+  apiKey: J7p6c9StN0PNG3CTiV
+  apiSecret: 55tNTYwClAP2nITVEyIHfewNKTPczlsOlMia
+  testNet: true
+
+websocket:
+  url: "ws://localhost:8085/gs-guide-websocket"
