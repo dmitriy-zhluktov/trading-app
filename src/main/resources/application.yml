@@ -1,7 +1,16 @@
 bybit:
-  apiKey: J7p6c9StN0PNG3CTiV
-  apiSecret: 55tNTYwClAP2nITVEyIHfewNKTPczlsOlMia
-  testNet: true
+  apiKey:
+  apiSecret:
+
 
 websocket:
-  url: "ws://localhost:8085/gs-guide-websocket"
+  url:
+
+logging:
+  level:
+    root: DEBUG
+
+trade:
+  sellAmountPercent: 50
+  priceDiffPercent: 50
+  buyAmountUsdt: 50

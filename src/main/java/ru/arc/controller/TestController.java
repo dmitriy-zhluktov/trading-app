@@ -16,9 +16,4 @@ public class TestController {
     public String test(@RequestParam final String coin) {
         return tradeService.retrieveBalance(coin);
     }
-
-    @GetMapping("/sell")
-    public void sell(final String message) {
-        tradeService.sell(message);
-    }
 }

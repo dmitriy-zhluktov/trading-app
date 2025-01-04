@@ -6,6 +6,7 @@ import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
 import ru.arc.service.TradeService;
+import ru.arc.socket.model.CurrencyUpdate;
 
 import java.lang.reflect.Type;
 
@@ -15,7 +16,8 @@ public class WsHandler extends StompSessionHandlerAdapter {
 
     @Override
     public void handleFrame(StompHeaders headers, Object payload) {
-        System.out.println(new String((byte[]) payload));
+        final var currencyUpdate = (CurrencyUpdate) payload;
+        tradeService.performAction(currencyUpdate.getCoin(), currencyUpdate.getDirection(), currencyUpdate.getCurrentPrice());
     }
 
     @Override
@@ -30,7 +32,7 @@ public class WsHandler extends StompSessionHandlerAdapter {
 
     @Override
     public Type getPayloadType(StompHeaders headers) {
-        return Object.class;
+        return CurrencyUpdate.class;
     }
 }
 

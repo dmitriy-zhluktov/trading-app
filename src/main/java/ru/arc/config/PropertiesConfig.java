@@ -4,7 +4,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import ru.arc.config.properties.BybitProperties;
+import ru.arc.config.properties.TradeProperties;
 import ru.arc.config.properties.WebSocketProperties;
+
+import java.math.BigDecimal;
 
 @Configuration
 public class PropertiesConfig {
@@ -28,6 +31,19 @@ public class PropertiesConfig {
     ) {
         return WebSocketProperties.builder()
                 .url(url)
+                .build();
+    }
+
+    @Bean
+    public TradeProperties tradeProperties(
+            @Value("${trade.sellAmountPercent}") final int sellAmountPercent,
+            @Value("${trade.priceDiffPercent}") final int priceDiffPercent,
+            @Value("${trade.buyAmountUsdt}") final BigDecimal buyAmountUsdt
+    ) {
+        return TradeProperties.builder()
+                .sellAmountPercent(sellAmountPercent)
+                .priceDiffPercent(priceDiffPercent)
+                .buyAmountUsdt(buyAmountUsdt)
                 .build();
     }
 }

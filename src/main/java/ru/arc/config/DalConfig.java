@@ -2,6 +2,7 @@ package ru.arc.config;
 
 import com.bybit.api.client.restApi.BybitApiAccountRestClient;
 import com.bybit.api.client.restApi.BybitApiAsyncTradeRestClient;
+import com.bybit.api.client.restApi.BybitApiTradeRestClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,7 +14,7 @@ public class DalConfig {
 
     @Bean
     public TradeDal tradeDal(
-            final BybitApiAsyncTradeRestClient tradeClient,
+            final BybitApiTradeRestClient tradeClient,
             final BybitApiAccountRestClient accountClient,
             final ObjectMapper objectMapper
             ) {
