@@ -6,5 +6,5 @@ import lombok.Builder;
 public final class BybitProperties {
     public final String apiKey;
     public final String apiSecret;
-    public final boolean testNet;
+    public final String tradingNet;
 }

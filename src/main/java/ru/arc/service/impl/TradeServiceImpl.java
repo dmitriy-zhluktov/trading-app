@@ -6,6 +6,8 @@ import ru.arc.dal.TradeDal;
 import ru.arc.service.TradeService;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
+import java.math.RoundingMode;
 
 @RequiredArgsConstructor
 public final class TradeServiceImpl implements TradeService {
@@ -18,15 +20,23 @@ public final class TradeServiceImpl implements TradeService {
 
     @Override
     public String retrieveBalance(String coin) {
-        return dal.retrieveBalance(coin);
+        return dal.retrieveBalance(coin).toString();
     }
 
     @Override
     public void performAction(String coin, String direction, BigDecimal currentPrice) {
         if (direction.equals(DIRECTION_UP)) {
-            final var balance = new BigDecimal(dal.retrieveBalance(coin));
+            final var balance = dal.retrieveBalance(coin).setScale(0, RoundingMode.DOWN);
             if (balance.compareTo(BigDecimal.ZERO) == 0) {
-                dal.buy(coin, tradeProperties.buyAmountUsdt);
+                //dal.buy(coin, tradeProperties.buyAmountUsdt);
+                final var coinPrice = dal.retrieveLastPrice(coin);
+                dal.createLimitOrder(
+                        coin,
+                        coinPrice,
+                        tradeProperties.buyAmountUsdt,
+                        percentUp(coinPrice, tradeProperties.priceDiffPercent),
+                        percentDown(coinPrice, tradeProperties.priceDiffPercent)
+                );
             } else {
                 final var buyPrice = dal.retrieveBuyPrice(coin);
                 if (currentPrice.compareTo(percentUp(buyPrice, tradeProperties.priceDiffPercent)) > 0) {

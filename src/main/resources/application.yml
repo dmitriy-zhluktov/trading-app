@@ -1,6 +1,7 @@
 bybit:
   apiKey:
   apiSecret:
+  tradingNet: main
 
 
 websocket:

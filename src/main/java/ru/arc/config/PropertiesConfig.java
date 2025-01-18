@@ -16,12 +16,12 @@ public class PropertiesConfig {
     public BybitProperties bybitProperties(
             @Value("${bybit.apiKey}") final String apiKey,
             @Value("${bybit.apiSecret}") final String apiSecret,
-            @Value("${bybit.testNet:false}") final boolean testNet
+            @Value("${bybit.tradingNet:main}") final String tradingNet
     ) {
         return BybitProperties.builder()
                 .apiKey(apiKey)
                 .apiSecret(apiSecret)
-                .testNet(testNet)
+                .tradingNet(tradingNet)
                 .build();
     }
 
