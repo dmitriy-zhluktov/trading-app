@@ -1,5 +1,8 @@
 package ru.arc.dal;
 
+import ru.arc.service.model.Order;
+import ru.arc.service.model.OrderResult;
+
 import java.math.BigDecimal;
 
 public interface TradeDal {
@@ -11,19 +14,19 @@ public interface TradeDal {
             BigDecimal usdtAmount
     );
 
-    void buy(
+    OrderResult buy(
             String coin,
             BigDecimal usdtAmount
     );
 
     BigDecimal retrieveBuyPrice(String coin);
 
-    void createLimitOrder(
+    Order retrieveOrder(String orderId);
+
+    void createTpOrder(
             String coin,
-            BigDecimal currentPrice,
-            BigDecimal usdtAmount,
-            BigDecimal tpLimitPrice,
-            BigDecimal slLimitPrice
+            BigDecimal tpPrice,
+            BigDecimal quantity
     );
 
     BigDecimal retrieveLastPrice(String coin);

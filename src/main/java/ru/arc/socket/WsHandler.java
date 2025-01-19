@@ -13,16 +13,17 @@ import java.lang.reflect.Type;
 @RequiredArgsConstructor
 public class WsHandler extends StompSessionHandlerAdapter {
     private final TradeService tradeService;
+    private final String topic;
 
     @Override
     public void handleFrame(StompHeaders headers, Object payload) {
         final var currencyUpdate = (CurrencyUpdate) payload;
-        tradeService.performAction(currencyUpdate.getCoin(), currencyUpdate.getDirection(), currencyUpdate.getCurrentPrice());
+        tradeService.performAction(currencyUpdate.getCoin(), currencyUpdate.getDirection());
     }
 
     @Override
     public void afterConnected(StompSession session, StompHeaders connectedHeaders) {
-        session.subscribe("/topic/greetings", this);
+        session.subscribe(topic, this);
     }
 
     @Override

@@ -13,8 +13,11 @@ import ru.arc.socket.WsHandler;
 public class WebSocketConfig {
 
     @Bean
-    public WsHandler wsHandler(final TradeService tradeService) {
-        return new WsHandler(tradeService);
+    public WsHandler wsHandler(
+            final TradeService tradeService,
+            final WebSocketProperties webSocketProperties
+    ) {
+        return new WsHandler(tradeService, webSocketProperties.topic);
     }
 
     @Bean

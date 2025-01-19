@@ -27,10 +27,12 @@ public class PropertiesConfig {
 
     @Bean
     public WebSocketProperties webSocketProperties(
-            @Value("${websocket.url}") final String url
+            @Value("${websocket.url}") final String url,
+            @Value("${websocket.topic}") final String topic
     ) {
         return WebSocketProperties.builder()
                 .url(url)
+                .topic(topic)
                 .build();
     }
 

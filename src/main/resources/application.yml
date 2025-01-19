@@ -6,6 +6,7 @@ bybit:
 
 websocket:
   url:
+  topic:
 
 logging:
   level:

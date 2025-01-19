@@ -6,6 +6,8 @@ import java.math.BigDecimal;
 
 @Builder
 final public class Order {
-    public final BigDecimal execPrice;
+    public final String orderStatus;
     public final String side;
+    public final BigDecimal cumExecQty;
+    public final BigDecimal avgPrice;
 }

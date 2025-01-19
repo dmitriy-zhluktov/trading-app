@@ -5,6 +5,7 @@ import com.bybit.api.client.domain.TradeOrderType;
 import com.bybit.api.client.domain.account.AccountType;
 import com.bybit.api.client.domain.account.request.AccountDataRequest;
 import com.bybit.api.client.domain.market.request.MarketDataRequest;
+import com.bybit.api.client.domain.trade.OrderFilter;
 import com.bybit.api.client.domain.trade.Side;
 import com.bybit.api.client.domain.trade.request.TradeOrderRequest;
 import com.bybit.api.client.restApi.BybitApiAccountRestClient;
@@ -13,11 +14,10 @@ import com.bybit.api.client.restApi.BybitApiTradeRestClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import ru.arc.dal.TradeDal;
-import ru.arc.service.model.CoinTicker;
-import ru.arc.service.model.Order;
-import ru.arc.service.model.WalletBalance;
+import ru.arc.service.model.*;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.math.RoundingMode;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -63,19 +63,29 @@ public class TradeDalImpl implements TradeDal {
     }
 
     @Override
-    public void buy(
+    public OrderResult buy(
             final String coin,
             final BigDecimal usdtAmount
     ) {
         final var order = TradeOrderRequest.builder()
                 .orderType(TradeOrderType.MARKET)
                 .category(CategoryType.SPOT)
+                .orderId("")
                 .symbol(coin + "USDT")
                 .side(Side.BUY)
                 .marketUnit("quoteCoin")
                 .qty(usdtAmount.toString())
                 .build();
-        System.out.println(tradeClient.createOrder(order));
+        final var rs = tradeClient.createOrder(order);
+        System.out.println(rs);
+        final var result = ((LinkedHashMap<?, ?>) rs).get("result");
+        final var orderResult = OrderResult.builder();
+        orderResult.code(Integer.parseInt(((LinkedHashMap<?, ?>) rs).get("retCode").toString()));
+        orderResult.msg(((LinkedHashMap<?, ?>) rs).get("retMsg").toString());
+        orderResult.orderId(((LinkedHashMap<?, ?>) result).get("orderId").toString());
+        orderResult.orderLinkId(((LinkedHashMap<?, ?>) result).get("orderLinkId").toString());
+
+        return orderResult.build();
     }
 
     @Override
@@ -88,35 +98,42 @@ public class TradeDalImpl implements TradeDal {
         final var rs = tradeClient.getTradeHistory(rq);
             final var result = ((LinkedHashMap<?, ?>) rs).get("result");
             final var tradeList = ((LinkedHashMap<?, ?>) result).get("list");
-            final var lastOrder = ((List<?>) tradeList)
+            final var lastTrade = ((List<?>) tradeList)
                     .stream()
-                    .map(item -> objectMapper.convertValue(item, Order.class))
+                    .map(item -> objectMapper.convertValue(item, TradeHistory.class))
                     .filter(order -> order.side.equals(Side.BUY.getTransactionSide()))
                     .findFirst();
-        return lastOrder.map((order -> order.execPrice)).orElse(null);
+        return lastTrade.map(trade -> trade.execPrice).orElse(null);
     }
 
     @Override
-    public void createLimitOrder(
-            final String coin,
-            final BigDecimal currentPrice,
-            final BigDecimal usdtAmount,
-            final BigDecimal tpLimitPrice,
-            final BigDecimal slLimitPrice) {
-        final var order = TradeOrderRequest.builder()
-                .orderType(TradeOrderType.LIMIT)
+    public Order retrieveOrder(final String orderId) {
+        final var rq = TradeOrderRequest.builder()
                 .category(CategoryType.SPOT)
-                .symbol(coin + "USDT")
-                .price(currentPrice.setScale(4, RoundingMode.HALF_UP).toString())
-                .side(Side.BUY)
-                //.marketUnit("quoteCoin")
-                .tpLimitPrice(tpLimitPrice.setScale(4, RoundingMode.HALF_UP).toString())
-                .tpOrderType(TradeOrderType.MARKET)
-                .slLimitPrice(slLimitPrice.setScale(4, RoundingMode.HALF_UP).toPlainString())
-                .slOrderType(TradeOrderType.MARKET)
-                .qty(usdtAmount.setScale(2, RoundingMode.HALF_UP).divide(currentPrice, RoundingMode.HALF_DOWN).toString())
+                .orderId(orderId)
                 .build();
-        System.out.println(currentPrice.toString());
+        final var rs = tradeClient.getOrderHistory(rq);
+        System.out.println(rs);
+        final var result = ((LinkedHashMap<?, ?>) rs).get("result");
+        final var orderList = (List<?>) ((LinkedHashMap<?, ?>) result).get("list");
+        return orderList.isEmpty() ? Order.builder().build() : objectMapper.convertValue(orderList.get(0), Order.class);
+    }
+
+        @Override
+    public void createTpOrder(
+            final String coin,
+            final BigDecimal tpPrice,
+            final BigDecimal quantity
+    ) {
+        final var order = TradeOrderRequest.builder()
+                .orderType(TradeOrderType.MARKET)
+                .category(CategoryType.SPOT)
+                .orderFilter(OrderFilter.STOP_ORDER)
+                .symbol(coin + "USDT")
+                .side(Side.SELL)
+                .triggerPrice(tpPrice.toString())
+                .qty(quantity.toString())
+                .build();
         System.out.println(tradeClient.createOrder(order));
     }
 
@@ -131,5 +148,15 @@ public class TradeDalImpl implements TradeDal {
         final var tickerList = ((LinkedHashMap<?, ?>) result).get("list");
         final var coinTicker = objectMapper.convertValue(((List<?>) tickerList).get(0), CoinTicker.class);
         return coinTicker.lastPrice;
+    }
+
+    private String scalePrice(
+            final BigDecimal price
+    ) {
+        return price.setScale(4, RoundingMode.HALF_UP).toString();
+    }
+
+    private String scaleQty(final BigDecimal qty) {
+        return qty.setScale(2, RoundingMode.HALF_DOWN).toString();
     }
 }
