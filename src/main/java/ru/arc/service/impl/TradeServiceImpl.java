@@ -7,7 +7,6 @@ import ru.arc.dal.TradeDal;
 import ru.arc.service.TradeService;
 
 import java.math.BigDecimal;
-import java.math.MathContext;
 import java.math.RoundingMode;
 
 @RequiredArgsConstructor
@@ -27,9 +26,11 @@ public final class TradeServiceImpl implements TradeService {
             final String direction
     ) {
         if (direction.equals(DIRECTION_UP)) {
-            final var balance = dal.retrieveBalance(coin).setScale(0, RoundingMode.DOWN);
-            if (balance.compareTo(BigDecimal.ZERO) == 0) {
-                final var buyOrder = dal.buy(coin, tradeProperties.buyAmountUsdt);
+            final var instruments = dal.retrieveSpotInstruments(coin);
+            final var balance = dal.retrieveBalance(coin);
+            final var maxOrderQty = scaleTo(instruments.maxOrderQty, instruments.basePrecision);
+            if (balance.compareTo(instruments.minOrderQty) < 1) {
+                final var buyOrder = dal.buy(coin, scaleTo(tradeProperties.buyAmountUsdt, instruments.quotePrecision));
                 if (buyOrder.code != 0) {
                     System.out.println(buyOrder.msg);
                 } else {
@@ -39,11 +40,11 @@ public final class TradeServiceImpl implements TradeService {
                         final var order = dal.retrieveOrder(buyOrder.orderId);
                         if (ORDER_STATUS_FILLED.equals(order.orderStatus)) {
                             orderCompleted = true;
-                            final var newBalance = dal.retrieveBalance(coin).setScale(0, RoundingMode.DOWN);
+                            final var newBalance = scaleTo(dal.retrieveBalance(coin), instruments.basePrecision);
                             dal.createTpOrder(
                                     coin,
-                                    percentUp(order.avgPrice, tradeProperties.priceDiffPercent),
-                                    newBalance
+                                    scaleTo(percentUp(order.avgPrice, tradeProperties.priceDiffPercent), instruments.tickSize),
+                                    newBalance.min(maxOrderQty)
                             );
                         } else {
                             attemptsCount--;
@@ -55,7 +56,8 @@ public final class TradeServiceImpl implements TradeService {
                 final var buyPrice = dal.retrieveBuyPrice(coin);
                 final var currentPrice = dal.retrieveLastPrice(coin);
                 if (currentPrice.compareTo(percentUp(buyPrice, tradeProperties.priceDiffPercent)) > 0) {
-                    dal.sell(coin, currentPrice.multiply(percentOf(balance, tradeProperties.sellAmountPercent)));
+                    final var scaledBalance = scaleTo(balance, instruments.basePrecision);
+                    dal.sell(coin, maxOrderQty.min(scaledBalance));
                 }
             }
         }
@@ -86,6 +88,13 @@ public final class TradeServiceImpl implements TradeService {
         final int valueScale = value.scale();
         return value.multiply(BigDecimal.valueOf(percent)).divide(ONE_HUNDRED)
                 .setScale(valueScale, RoundingMode.HALF_DOWN);
+    }
+
+    private BigDecimal scaleTo(
+            final BigDecimal value,
+            final BigDecimal calibrator
+    ) {
+        return value.setScale(calibrator.scale(), RoundingMode.DOWN);
     }
 }
 

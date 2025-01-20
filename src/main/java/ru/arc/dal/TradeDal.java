@@ -2,6 +2,7 @@ package ru.arc.dal;
 
 import ru.arc.service.model.Order;
 import ru.arc.service.model.OrderResult;
+import ru.arc.service.model.SpotCoinInstruments;
 
 import java.math.BigDecimal;
 
@@ -11,7 +12,7 @@ public interface TradeDal {
 
     void sell(
             String coin,
-            BigDecimal usdtAmount
+            BigDecimal qty
     );
 
     OrderResult buy(
@@ -30,4 +31,6 @@ public interface TradeDal {
     );
 
     BigDecimal retrieveLastPrice(String coin);
+
+    SpotCoinInstruments retrieveSpotInstruments(String coin);
 }

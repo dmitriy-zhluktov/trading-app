@@ -14,10 +14,14 @@ import com.bybit.api.client.restApi.BybitApiTradeRestClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import ru.arc.dal.TradeDal;
-import ru.arc.service.model.*;
+import ru.arc.service.model.CoinTicker;
+import ru.arc.service.model.Order;
+import ru.arc.service.model.OrderResult;
+import ru.arc.service.model.SpotCoinInstruments;
+import ru.arc.service.model.TradeHistory;
+import ru.arc.service.model.WalletBalance;
 
 import java.math.BigDecimal;
-import java.math.MathContext;
 import java.math.RoundingMode;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -49,15 +53,14 @@ public class TradeDalImpl implements TradeDal {
     @Override
     public void sell(
             final String coin,
-            final BigDecimal usdtAmount
+            final BigDecimal qty
     ) {
         final var order = TradeOrderRequest.builder()
                 .orderType(TradeOrderType.MARKET)
                 .category(CategoryType.SPOT)
                 .symbol(coin + "USDT")
                 .side(Side.SELL)
-                .marketUnit("quoteCoin")
-                .qty(usdtAmount.toString())
+                .qty(qty.toString())
                 .build();
         System.out.println(tradeClient.createOrder(order));
     }
@@ -70,7 +73,6 @@ public class TradeDalImpl implements TradeDal {
         final var order = TradeOrderRequest.builder()
                 .orderType(TradeOrderType.MARKET)
                 .category(CategoryType.SPOT)
-                .orderId("")
                 .symbol(coin + "USDT")
                 .side(Side.BUY)
                 .marketUnit("quoteCoin")
@@ -148,6 +150,35 @@ public class TradeDalImpl implements TradeDal {
         final var tickerList = ((LinkedHashMap<?, ?>) result).get("list");
         final var coinTicker = objectMapper.convertValue(((List<?>) tickerList).get(0), CoinTicker.class);
         return coinTicker.lastPrice;
+    }
+
+    @Override
+    public SpotCoinInstruments retrieveSpotInstruments(String coin) {
+        final var rq = MarketDataRequest.builder()
+                .category(CategoryType.SPOT)
+                .symbol(coin + "USDT")
+                .build();
+        final var rs = marketClient.getInstrumentsInfo(rq);
+        final var result = ((LinkedHashMap<?, ?>) rs).get("result");
+        final var instrumentsList = (List<?>) ((LinkedHashMap<?, ?>) result).get("list");
+        if (instrumentsList.isEmpty()) {
+            return null;
+        }
+
+        final var element = (LinkedHashMap<?, ?>) instrumentsList.get(0);
+        final var lotSizeFilter = (LinkedHashMap<?, ?>) element.get("lotSizeFilter");
+        final var priceFilter = (LinkedHashMap<?, ?>) element.get("priceFilter");
+        final var instruments = SpotCoinInstruments.builder()
+                .symbol(element.get("symbol").toString())
+                .basePrecision(new BigDecimal(lotSizeFilter.get("basePrecision").toString()))
+                .quotePrecision(new BigDecimal(lotSizeFilter.get("quotePrecision").toString()))
+                .minOrderQty(new BigDecimal(lotSizeFilter.get("minOrderQty").toString()))
+                .maxOrderQty(new BigDecimal(lotSizeFilter.get("maxOrderQty").toString()))
+                .minOrderAmt(new BigDecimal(lotSizeFilter.get("minOrderAmt").toString()))
+                .maxOrderAmt(new BigDecimal(lotSizeFilter.get("maxOrderAmt").toString()))
+                .tickSize(new BigDecimal(priceFilter.get("tickSize").toString()))
+                .build();
+        return instruments;
     }
 
     private String scalePrice(

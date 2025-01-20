@@ -2,8 +2,6 @@ package ru.arc.service.model;
 
 import lombok.Builder;
 
-import java.math.BigDecimal;
-
 @Builder
 final public class OrderResult {
     public final int code;
