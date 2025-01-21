@@ -22,15 +22,18 @@ public final class TradeServiceImpl implements TradeService {
     @SneakyThrows
     @Override
     public void performAction(
-            final String coin,
+            final String symbol,
             final String direction
     ) {
-        if (direction.equals(DIRECTION_UP)) {
-            final var instruments = dal.retrieveSpotInstruments(coin);
+        if (direction.equalsIgnoreCase(DIRECTION_UP)) {
+            final var splitSymbol = symbol.split("/");
+            final var coin = splitSymbol[0].toUpperCase();
+            final var quote = splitSymbol[1].toUpperCase();
+            final var instruments = dal.retrieveSpotInstruments(coin, quote);
             final var balance = dal.retrieveBalance(coin);
             final var maxOrderQty = scaleTo(instruments.maxOrderQty, instruments.basePrecision);
             if (balance.compareTo(instruments.minOrderQty) < 1) {
-                final var buyOrder = dal.buy(coin, scaleTo(tradeProperties.buyAmountUsdt, instruments.quotePrecision));
+                final var buyOrder = dal.buy(coin, quote, scaleTo(tradeProperties.buyAmountUsdt, instruments.quotePrecision));
                 if (buyOrder.code != 0) {
                     System.out.println(buyOrder.msg);
                 } else {
@@ -43,9 +46,9 @@ public final class TradeServiceImpl implements TradeService {
                             final var newBalance = scaleTo(dal.retrieveBalance(coin), instruments.basePrecision);
                             dal.createTpOrder(
                                     coin,
+                                    quote,
                                     scaleTo(percentUp(order.avgPrice, tradeProperties.priceDiffPercent), instruments.tickSize),
-                                    newBalance.min(maxOrderQty)
-                            );
+                                    newBalance.min(maxOrderQty));
                         } else {
                             attemptsCount--;
                             Thread.sleep(100L);
@@ -53,11 +56,11 @@ public final class TradeServiceImpl implements TradeService {
                     }
                 }
             } else {
-                final var buyPrice = dal.retrieveBuyPrice(coin);
-                final var currentPrice = dal.retrieveLastPrice(coin);
+                final var buyPrice = dal.retrieveBuyPrice(coin, quote);
+                final var currentPrice = dal.retrieveLastPrice(coin, quote);
                 if (currentPrice.compareTo(percentUp(buyPrice, tradeProperties.priceDiffPercent)) > 0) {
                     final var scaledBalance = scaleTo(balance, instruments.basePrecision);
-                    dal.sell(coin, maxOrderQty.min(scaledBalance));
+                    dal.sell(coin, quote, maxOrderQty.min(scaledBalance));
                 }
             }
         }

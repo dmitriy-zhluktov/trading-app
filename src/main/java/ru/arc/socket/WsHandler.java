@@ -1,6 +1,7 @@
 package ru.arc.socket;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
@@ -11,6 +12,7 @@ import ru.arc.socket.model.CurrencyUpdate;
 import java.lang.reflect.Type;
 
 @RequiredArgsConstructor
+@Slf4j
 public class WsHandler extends StompSessionHandlerAdapter {
     private final TradeService tradeService;
     private final String topic;
@@ -18,7 +20,8 @@ public class WsHandler extends StompSessionHandlerAdapter {
     @Override
     public void handleFrame(StompHeaders headers, Object payload) {
         final var currencyUpdate = (CurrencyUpdate) payload;
-        tradeService.performAction(currencyUpdate.getCoin(), currencyUpdate.getDirection());
+        log.info("Received message {} {}", currencyUpdate.symbol, currencyUpdate.direction);
+        tradeService.performAction(currencyUpdate.symbol, currencyUpdate.direction);
     }
 
     @Override

@@ -34,10 +34,10 @@ public class TradeDalImpl implements TradeDal {
     private final ObjectMapper objectMapper;
 
     @Override
-    public BigDecimal retrieveBalance(String coin) {
+    public BigDecimal retrieveBalance(final String coin) {
         final var rq = AccountDataRequest.builder()
                 .accountType(AccountType.UNIFIED)
-                .coins(coin.toUpperCase())
+                .coins(coin)
                 .build();
         final var rs = accountClient.getWalletBalance(rq);
         final var result = ((LinkedHashMap<?, ?>) rs).get("result");
@@ -53,12 +53,13 @@ public class TradeDalImpl implements TradeDal {
     @Override
     public void sell(
             final String coin,
+            final String quote,
             final BigDecimal qty
     ) {
         final var order = TradeOrderRequest.builder()
                 .orderType(TradeOrderType.MARKET)
                 .category(CategoryType.SPOT)
-                .symbol(coin + "USDT")
+                .symbol(coin + quote)
                 .side(Side.SELL)
                 .qty(qty.toString())
                 .build();
@@ -68,12 +69,13 @@ public class TradeDalImpl implements TradeDal {
     @Override
     public OrderResult buy(
             final String coin,
+            final String quote,
             final BigDecimal usdtAmount
     ) {
         final var order = TradeOrderRequest.builder()
                 .orderType(TradeOrderType.MARKET)
                 .category(CategoryType.SPOT)
-                .symbol(coin + "USDT")
+                .symbol(coin + quote)
                 .side(Side.BUY)
                 .marketUnit("quoteCoin")
                 .qty(usdtAmount.toString())
@@ -91,11 +93,13 @@ public class TradeDalImpl implements TradeDal {
     }
 
     @Override
-    public BigDecimal retrieveBuyPrice(String coin) {
+    public BigDecimal retrieveBuyPrice(
+            final String coin,
+            final String quote
+    ) {
         final var rq = TradeOrderRequest.builder()
                 .category(CategoryType.SPOT)
-                .symbol(coin + "USDT")
-                .openOnly(0)
+                .symbol(coin + quote)
                 .build();
         final var rs = tradeClient.getTradeHistory(rq);
             final var result = ((LinkedHashMap<?, ?>) rs).get("result");
@@ -123,15 +127,16 @@ public class TradeDalImpl implements TradeDal {
 
         @Override
     public void createTpOrder(
-            final String coin,
-            final BigDecimal tpPrice,
-            final BigDecimal quantity
+                final String coin,
+                final String quote,
+                final BigDecimal tpPrice,
+                final BigDecimal quantity
     ) {
         final var order = TradeOrderRequest.builder()
                 .orderType(TradeOrderType.MARKET)
                 .category(CategoryType.SPOT)
                 .orderFilter(OrderFilter.STOP_ORDER)
-                .symbol(coin + "USDT")
+                .symbol(coin + quote)
                 .side(Side.SELL)
                 .triggerPrice(tpPrice.toString())
                 .qty(quantity.toString())
@@ -140,10 +145,13 @@ public class TradeDalImpl implements TradeDal {
     }
 
     @Override
-    public BigDecimal retrieveLastPrice(final String coin) {
+    public BigDecimal retrieveLastPrice(
+            final String coin,
+            final String quote
+    ) {
         final var rq = MarketDataRequest.builder()
                 .category(CategoryType.SPOT)
-                .symbol(coin + "USDT")
+                .symbol(coin + quote)
                 .build();
         final var rs = marketClient.getMarketTickers(rq);
         final var result = ((LinkedHashMap<?, ?>) rs).get("result");
@@ -153,10 +161,13 @@ public class TradeDalImpl implements TradeDal {
     }
 
     @Override
-    public SpotCoinInstruments retrieveSpotInstruments(String coin) {
+    public SpotCoinInstruments retrieveSpotInstruments(
+            final String coin,
+            final String quote
+    ) {
         final var rq = MarketDataRequest.builder()
                 .category(CategoryType.SPOT)
-                .symbol(coin + "USDT")
+                .symbol(coin + quote)
                 .build();
         final var rs = marketClient.getInstrumentsInfo(rq);
         final var result = ((LinkedHashMap<?, ?>) rs).get("result");
