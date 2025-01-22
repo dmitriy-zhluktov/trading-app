@@ -34,7 +34,7 @@ public class TradeDalImpl implements TradeDal {
     private final ObjectMapper objectMapper;
 
     @Override
-    public BigDecimal retrieveBalance(final String coin) {
+    public BigDecimal retrieveAvailableBalance(final String coin) {
         final var rq = AccountDataRequest.builder()
                 .accountType(AccountType.UNIFIED)
                 .coins(coin)
@@ -44,9 +44,9 @@ public class TradeDalImpl implements TradeDal {
         final var walletList = ((LinkedHashMap<?, ?>) result).get("list");
         final var walletBalance = objectMapper.convertValue(((List<?>) walletList).get(0), WalletBalance.class);
         return walletBalance.coin.stream()
-                .filter(coinBalance -> coinBalance.coin.equals(coin) && !coinBalance.walletBalance.isBlank())
+                .filter(coinBalance -> coinBalance.coin.equals(coin) && coinBalance.walletBalance != null && coinBalance.locked != null)
                 .findFirst()
-                .map(coinBalance -> new BigDecimal(coinBalance.walletBalance))
+                .map(coinBalance -> coinBalance.walletBalance.subtract(coinBalance.locked))
                 .orElse(BigDecimal.ZERO);
     }
 
@@ -135,7 +135,7 @@ public class TradeDalImpl implements TradeDal {
         final var order = TradeOrderRequest.builder()
                 .orderType(TradeOrderType.MARKET)
                 .category(CategoryType.SPOT)
-                .orderFilter(OrderFilter.STOP_ORDER)
+                .orderFilter(OrderFilter.TPSL_ORDER)
                 .symbol(coin + quote)
                 .side(Side.SELL)
                 .triggerPrice(tpPrice.toString())

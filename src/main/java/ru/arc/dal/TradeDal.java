@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 
 public interface TradeDal {
 
-    BigDecimal retrieveBalance(String coin);
+    BigDecimal retrieveAvailableBalance(String coin);
 
     void sell(
             String coin,

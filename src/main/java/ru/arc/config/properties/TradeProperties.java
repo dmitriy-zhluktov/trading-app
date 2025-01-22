@@ -6,7 +6,7 @@ import java.math.BigDecimal;
 
 @Builder
 final public class TradeProperties {
-    public final int sellAmountPercent;
-    public final int priceDiffPercent;
+    public final BigDecimal sellAmountPercent;
+    public final BigDecimal priceDiffPercent;
     public final BigDecimal buyAmountUsdt;
 }

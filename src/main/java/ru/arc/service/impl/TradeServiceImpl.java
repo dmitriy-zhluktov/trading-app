@@ -30,7 +30,7 @@ public final class TradeServiceImpl implements TradeService {
             final var coin = splitSymbol[0].toUpperCase();
             final var quote = splitSymbol[1].toUpperCase();
             final var instruments = dal.retrieveSpotInstruments(coin, quote);
-            final var balance = dal.retrieveBalance(coin);
+            final var balance = dal.retrieveAvailableBalance(coin);
             final var maxOrderQty = scaleTo(instruments.maxOrderQty, instruments.basePrecision);
             if (balance.compareTo(instruments.minOrderQty) < 1) {
                 final var buyOrder = dal.buy(coin, quote, scaleTo(tradeProperties.buyAmountUsdt, instruments.quotePrecision));
@@ -43,7 +43,7 @@ public final class TradeServiceImpl implements TradeService {
                         final var order = dal.retrieveOrder(buyOrder.orderId);
                         if (ORDER_STATUS_FILLED.equals(order.orderStatus)) {
                             orderCompleted = true;
-                            final var newBalance = scaleTo(dal.retrieveBalance(coin), instruments.basePrecision);
+                            final var newBalance = scaleTo(dal.retrieveAvailableBalance(coin), instruments.basePrecision);
                             dal.createTpOrder(
                                     coin,
                                     quote,
@@ -56,22 +56,24 @@ public final class TradeServiceImpl implements TradeService {
                     }
                 }
             } else {
-                final var buyPrice = dal.retrieveBuyPrice(coin, quote);
+                final var priceToSell = percentUp(dal.retrieveBuyPrice(coin, quote), tradeProperties.priceDiffPercent);
                 final var currentPrice = dal.retrieveLastPrice(coin, quote);
-                if (currentPrice.compareTo(percentUp(buyPrice, tradeProperties.priceDiffPercent)) > 0) {
-                    final var scaledBalance = scaleTo(balance, instruments.basePrecision);
-                    dal.sell(coin, quote, maxOrderQty.min(scaledBalance));
-                }
+                dal.createTpOrder(
+                        coin,
+                        quote,
+                        scaleTo(priceToSell.max(currentPrice), instruments.tickSize),
+                        scaleTo(balance, instruments.basePrecision)
+                );
             }
         }
     }
 
     private BigDecimal percentUp(
             final BigDecimal value,
-            final int percent
+            final BigDecimal percent
     ) {
         final int valueScale = value.scale();
-        return value.multiply(BigDecimal.ONE.add(BigDecimal.valueOf(percent).divide(ONE_HUNDRED)))
+        return value.multiply(BigDecimal.ONE.add(percent.divide(ONE_HUNDRED)))
                 .setScale(valueScale, RoundingMode.HALF_DOWN);
     }
 

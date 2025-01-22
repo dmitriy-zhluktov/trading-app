@@ -38,8 +38,8 @@ public class PropertiesConfig {
 
     @Bean
     public TradeProperties tradeProperties(
-            @Value("${trade.sellAmountPercent}") final int sellAmountPercent,
-            @Value("${trade.priceDiffPercent}") final int priceDiffPercent,
+            @Value("${trade.sellAmountPercent}") final BigDecimal sellAmountPercent,
+            @Value("${trade.priceDiffPercent}") final BigDecimal priceDiffPercent,
             @Value("${trade.buyAmountUsdt}") final BigDecimal buyAmountUsdt
     ) {
         return TradeProperties.builder()
