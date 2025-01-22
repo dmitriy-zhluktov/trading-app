@@ -1,35 +1,38 @@
 package ru.arc.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.messaging.converter.MappingJackson2MessageConverter;
+import org.springframework.web.socket.client.WebSocketConnectionManager;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
-import org.springframework.web.socket.messaging.WebSocketStompClient;
 import ru.arc.config.properties.WebSocketProperties;
 import ru.arc.service.TradeService;
-import ru.arc.socket.WsHandler;
+import ru.arc.socket.FlatWsMessageHandler;
 
 @Configuration
 public class WebSocketConfig {
 
     @Bean
-    public WsHandler wsHandler(
+    public FlatWsMessageHandler flatWsMessageHandler(
             final TradeService tradeService,
-            final WebSocketProperties webSocketProperties
-    ) {
-        return new WsHandler(tradeService, webSocketProperties.topic);
+            final ObjectMapper objectMapper
+            ) {
+        return new FlatWsMessageHandler(tradeService, objectMapper);
     }
 
     @Bean
-    public WebSocketStompClient webSocketClient(
+    public WebSocketConnectionManager wsConnectionManager(
             final WebSocketProperties webSocketProperties,
-            final WsHandler wsHandler
+            final FlatWsMessageHandler flatWsMessageHandler
     ) {
-        final var client = new StandardWebSocketClient();
-        final var stompClient = new WebSocketStompClient(client);
-        stompClient.setMessageConverter(new MappingJackson2MessageConverter());
-        stompClient.connect(webSocketProperties.url, wsHandler);
 
-        return stompClient;
+        WebSocketConnectionManager manager = new WebSocketConnectionManager(
+                new StandardWebSocketClient(),
+                flatWsMessageHandler,
+                webSocketProperties.url
+        );
+        manager.setAutoStartup(true);
+
+        return manager;
     }
 }
