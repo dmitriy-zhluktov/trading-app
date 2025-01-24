@@ -30,9 +30,10 @@ public final class TradeServiceImpl implements TradeService {
             final var coin = splitSymbol[0].toUpperCase();
             final var quote = splitSymbol[1].toUpperCase();
             final var instruments = dal.retrieveSpotInstruments(coin, quote);
-            final var balance = dal.retrieveAvailableBalance(coin);
+            final var coinBalance = dal.retrieveCoinBalance(coin);
+            final var coinQty = coinBalance.walletBalance;
             final var maxOrderQty = scaleTo(instruments.maxOrderQty, instruments.basePrecision);
-            if (balance.compareTo(instruments.minOrderQty) < 1) {
+            if (coinQty == null || coinQty.compareTo(instruments.minOrderQty) < 1) {
                 final var buyOrder = dal.buy(coin, quote, scaleTo(tradeProperties.buyAmountUsdt, instruments.quotePrecision));
                 if (buyOrder.code != 0) {
                     System.out.println(buyOrder.msg);
@@ -43,12 +44,16 @@ public final class TradeServiceImpl implements TradeService {
                         final var order = dal.retrieveOrder(buyOrder.orderId);
                         if (ORDER_STATUS_FILLED.equals(order.orderStatus)) {
                             orderCompleted = true;
-                            final var newBalance = scaleTo(dal.retrieveAvailableBalance(coin), instruments.basePrecision);
+                            final var actualCoinBalance = dal.retrieveCoinBalance(coin);
+                            final var availableBalance = scaleTo(
+                                    actualCoinBalance.walletBalance.subtract(actualCoinBalance.locked),
+                                    instruments.basePrecision
+                            );
                             dal.createTpOrder(
                                     coin,
                                     quote,
                                     scaleTo(percentUp(order.avgPrice, tradeProperties.priceDiffPercent), instruments.tickSize),
-                                    newBalance.min(maxOrderQty));
+                                    availableBalance.min(maxOrderQty));
                         } else {
                             attemptsCount--;
                             Thread.sleep(100L);
@@ -62,7 +67,7 @@ public final class TradeServiceImpl implements TradeService {
                         coin,
                         quote,
                         scaleTo(priceToSell.max(currentPrice), instruments.tickSize),
-                        scaleTo(balance, instruments.basePrecision)
+                        scaleTo(coinBalance.walletBalance.subtract(coinBalance.locked), instruments.basePrecision)
                 );
             }
         }

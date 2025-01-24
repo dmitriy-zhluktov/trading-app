@@ -51,6 +51,19 @@ public class TradeDalImpl implements TradeDal {
     }
 
     @Override
+    public WalletBalance.CoinBalance retrieveCoinBalance(final String coin) {
+        final var rq = AccountDataRequest.builder()
+                .accountType(AccountType.UNIFIED)
+                .coins(coin)
+                .build();
+        final var rs = accountClient.getWalletBalance(rq);
+        final var result = ((LinkedHashMap<?, ?>) rs).get("result");
+        final var walletList = ((LinkedHashMap<?, ?>) result).get("list");
+        final var walletBalance = objectMapper.convertValue(((List<?>) walletList).get(0), WalletBalance.class);
+        return walletBalance.coin.get(0);
+    }
+
+    @Override
     public void sell(
             final String coin,
             final String quote,
