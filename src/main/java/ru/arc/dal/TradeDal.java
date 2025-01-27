@@ -6,6 +6,7 @@ import ru.arc.service.model.SpotCoinInstruments;
 import ru.arc.service.model.WalletBalance;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 public interface TradeDal {
 
@@ -32,10 +33,22 @@ public interface TradeDal {
 
     Order retrieveOrder(String orderId);
 
-    void createTpOrder(
+    List<Order> retrieveOpenOrders(
+            String coin,
+            String quote
+    );
+
+    void cancelOrder(
+            String orderId,
+            String coin,
+            String quote
+    );
+
+    void createTpSlConditionalOrders(
             String coin,
             String quote,
             BigDecimal tpPrice,
+            BigDecimal slPrice,
             BigDecimal quantity
     );
 
@@ -48,4 +61,6 @@ public interface TradeDal {
             String coin,
             String quote
     );
+
+    WalletBalance retrieveWalletBalance();
 }

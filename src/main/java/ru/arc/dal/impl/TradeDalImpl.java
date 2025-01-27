@@ -7,6 +7,7 @@ import com.bybit.api.client.domain.account.request.AccountDataRequest;
 import com.bybit.api.client.domain.market.request.MarketDataRequest;
 import com.bybit.api.client.domain.trade.OrderFilter;
 import com.bybit.api.client.domain.trade.Side;
+import com.bybit.api.client.domain.trade.request.BatchOrderRequest;
 import com.bybit.api.client.domain.trade.request.TradeOrderRequest;
 import com.bybit.api.client.restApi.BybitApiAccountRestClient;
 import com.bybit.api.client.restApi.BybitApiMarketRestClient;
@@ -138,23 +139,69 @@ public class TradeDalImpl implements TradeDal {
         return orderList.isEmpty() ? Order.builder().build() : objectMapper.convertValue(orderList.get(0), Order.class);
     }
 
-        @Override
-    public void createTpOrder(
+    @Override
+    public List<Order> retrieveOpenOrders(
+            final String coin,
+            final String quote
+    ) {
+        final var rq = TradeOrderRequest.builder()
+                .category(CategoryType.SPOT);
+        if (coin != null && quote != null) {
+                rq.symbol(coin + quote);
+        }
+        final var rs = tradeClient.getOpenOrders(rq.build());
+        System.out.println(rs);
+        final var result = ((LinkedHashMap<?, ?>) rs).get("result");
+        final var orderList = (List<?>) ((LinkedHashMap<?, ?>) result).get("list");
+        return orderList
+                .stream()
+                .map(order -> objectMapper.convertValue(order, Order.class))
+                .toList();
+    }
+
+    @Override
+    public void cancelOrder(String orderId, String coin, String quote) {
+        final var rq = TradeOrderRequest.builder()
+                .category(CategoryType.SPOT)
+                .symbol(coin + quote)
+                .orderId(orderId)
+                .build();
+        final var rs = tradeClient.cancelOrder(rq);
+        System.out.println(rs);
+    }
+
+    @Override
+    public void createTpSlConditionalOrders(
                 final String coin,
                 final String quote,
                 final BigDecimal tpPrice,
+                final BigDecimal slPrice,
                 final BigDecimal quantity
     ) {
-        final var order = TradeOrderRequest.builder()
+        final var tpOrder = TradeOrderRequest.builder()
                 .orderType(TradeOrderType.MARKET)
                 .category(CategoryType.SPOT)
-                .orderFilter(OrderFilter.TPSL_ORDER)
+                .orderFilter(OrderFilter.STOP_ORDER)
                 .symbol(coin + quote)
                 .side(Side.SELL)
                 .triggerPrice(tpPrice.toString())
                 .qty(quantity.toString())
                 .build();
-        System.out.println(tradeClient.createOrder(order));
+
+        final var slOrder = TradeOrderRequest.builder()
+                .orderType(TradeOrderType.MARKET)
+                .category(CategoryType.SPOT)
+                .orderFilter(OrderFilter.STOP_ORDER)
+                .symbol(coin + quote)
+                .side(Side.SELL)
+                .triggerPrice(slPrice.toString())
+                .qty(quantity.toString())
+                .build();
+        final var batch = BatchOrderRequest.builder()
+                .category(CategoryType.SPOT)
+                .request(List.of(slOrder, tpOrder))
+                .build();
+        System.out.println(tradeClient.createBatchOrder(batch));
     }
 
     @Override
@@ -203,6 +250,17 @@ public class TradeDalImpl implements TradeDal {
                 .tickSize(new BigDecimal(priceFilter.get("tickSize").toString()))
                 .build();
         return instruments;
+    }
+
+    @Override
+    public WalletBalance retrieveWalletBalance() {
+        final var rq = AccountDataRequest.builder()
+                .accountType(AccountType.UNIFIED)
+                .build();
+        final var rs = accountClient.getWalletBalance(rq);
+        final var result = ((LinkedHashMap<?, ?>) rs).get("result");
+        final var walletList = ((LinkedHashMap<?, ?>) result).get("list");
+        return objectMapper.convertValue(((List<?>) walletList).get(0), WalletBalance.class);
     }
 
     private String scalePrice(

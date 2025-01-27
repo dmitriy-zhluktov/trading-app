@@ -5,6 +5,7 @@ import lombok.SneakyThrows;
 import ru.arc.config.properties.TradeProperties;
 import ru.arc.dal.TradeDal;
 import ru.arc.service.TradeService;
+import ru.arc.service.model.WalletBalance;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -17,6 +18,9 @@ public final class TradeServiceImpl implements TradeService {
     private static final String DIRECTION_UP = "UP";
     private static final String DIRECTION_DOWN = "DOWN";
     private static final String ORDER_STATUS_FILLED = "Filled";
+    private static final String ORDER_STATUS_UNTRIGGERED = "Untriggered";
+    private static final String STOP_ORDER_TYPE_OPTIONAL = "Stop";
+    private static final String ORDER_SIDE_SELL = "Sell";
     private static final BigDecimal ONE_HUNDRED = new BigDecimal("100");
 
     @SneakyThrows
@@ -33,7 +37,16 @@ public final class TradeServiceImpl implements TradeService {
             final var coinBalance = dal.retrieveCoinBalance(coin);
             final var coinQty = coinBalance.walletBalance;
             final var maxOrderQty = scaleTo(instruments.maxOrderQty, instruments.basePrecision);
-            if (coinQty == null || coinQty.compareTo(instruments.minOrderQty) < 1) {
+            final var openOrders = dal.retrieveOpenOrders(coin, quote);
+            final var optionalTpSlOrders = openOrders
+                    .stream()
+                    .filter(order -> ORDER_STATUS_UNTRIGGERED.equalsIgnoreCase(order.orderStatus) &&
+                            STOP_ORDER_TYPE_OPTIONAL.equalsIgnoreCase(order.stopOrderType) &&
+                            ORDER_SIDE_SELL.equalsIgnoreCase(order.side))
+                    .toList();
+            // Если размер меньше 2, значит ранее сработал один из ордеров, значит надо отменить другой
+            if (optionalTpSlOrders.size() < 2 && (coinQty == null || coinQty.compareTo(instruments.minOrderQty) < 1)) {
+                optionalTpSlOrders.forEach( order -> dal.cancelOrder(order.orderId, coin, quote));
                 final var buyOrder = dal.buy(coin, quote, scaleTo(tradeProperties.buyAmountUsdt, instruments.quotePrecision));
                 if (buyOrder.code != 0) {
                     System.out.println(buyOrder.msg);
@@ -42,17 +55,18 @@ public final class TradeServiceImpl implements TradeService {
                     int attemptsCount = 30;
                     while (!orderCompleted && attemptsCount > 0) {
                         final var order = dal.retrieveOrder(buyOrder.orderId);
-                        if (ORDER_STATUS_FILLED.equals(order.orderStatus)) {
+                        if (ORDER_STATUS_FILLED.equalsIgnoreCase(order.orderStatus)) {
                             orderCompleted = true;
                             final var actualCoinBalance = dal.retrieveCoinBalance(coin);
                             final var availableBalance = scaleTo(
                                     actualCoinBalance.walletBalance.subtract(actualCoinBalance.locked),
                                     instruments.basePrecision
                             );
-                            dal.createTpOrder(
+                            dal.createTpSlConditionalOrders(
                                     coin,
                                     quote,
-                                    scaleTo(percentUp(order.avgPrice, tradeProperties.priceDiffPercent), instruments.tickSize),
+                                    scaleTo(percentUp(order.avgPrice, tradeProperties.takeProfitPercent), instruments.tickSize),
+                                    scaleTo(percentDown(order.avgPrice, tradeProperties.stopLossPercent), instruments.tickSize),
                                     availableBalance.min(maxOrderQty));
                         } else {
                             attemptsCount--;
@@ -61,16 +75,40 @@ public final class TradeServiceImpl implements TradeService {
                     }
                 }
             } else {
-                final var priceToSell = percentUp(dal.retrieveBuyPrice(coin, quote), tradeProperties.priceDiffPercent);
-                final var currentPrice = dal.retrieveLastPrice(coin, quote);
-                dal.createTpOrder(
-                        coin,
-                        quote,
-                        scaleTo(priceToSell.max(currentPrice), instruments.tickSize),
-                        scaleTo(coinBalance.walletBalance.subtract(coinBalance.locked), instruments.basePrecision)
-                );
+                if (optionalTpSlOrders.isEmpty()) {
+                    final var buyPrice = dal.retrieveBuyPrice(coin, quote);
+                    final var tpPrice = percentUp(buyPrice, tradeProperties.takeProfitPercent);
+                    final var slPrice = percentDown(buyPrice, tradeProperties.stopLossPercent);
+                    final var currentPrice = dal.retrieveLastPrice(coin, quote);
+                    dal.createTpSlConditionalOrders(
+                            coin,
+                            quote,
+                            scaleTo(tpPrice.max(currentPrice), instruments.tickSize),
+                            scaleTo(slPrice.min(currentPrice), instruments.tickSize),
+                            scaleTo(coinBalance.walletBalance.subtract(coinBalance.locked), instruments.basePrecision));
+                }
             }
         }
+    }
+
+    @Override
+    public void wipe() {
+        final var openOrders = dal.retrieveOpenOrders(null, null);
+        openOrders.forEach(order -> dal.cancelOrder(order.orderId, order.symbol, ""));
+        final var balance = dal.retrieveWalletBalance();
+        balance.coin.forEach(coinBalance -> {
+            if (!coinBalance.coin.equals("USDT")) {
+                final var instruments = dal.retrieveSpotInstruments(coinBalance.coin, "USDT");
+                if (instruments.minOrderQty.compareTo(coinBalance.walletBalance) < 1) {
+                    dal.sell(coinBalance.coin, "USDT", scaleTo(coinBalance.walletBalance, instruments.basePrecision));
+                }
+            }
+        });
+    }
+
+    @Override
+    public WalletBalance walletBalance() {
+        return dal.retrieveWalletBalance();
     }
 
     private BigDecimal percentUp(
@@ -84,10 +122,10 @@ public final class TradeServiceImpl implements TradeService {
 
     private BigDecimal percentDown(
             final BigDecimal value,
-            final int percent
+            final BigDecimal percent
     ) {
         final int valueScale = value.scale();
-        return value.multiply(BigDecimal.ONE.subtract(BigDecimal.valueOf(percent).divide(ONE_HUNDRED)))
+        return value.multiply(BigDecimal.ONE.subtract(percent.divide(ONE_HUNDRED)))
                 .setScale(valueScale, RoundingMode.HALF_DOWN);
     }
 
