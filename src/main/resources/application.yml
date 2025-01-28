@@ -3,16 +3,16 @@ bybit:
   apiSecret:
   tradingNet: main
 
-
 websocket:
   url:
   topic:
 
+trade:
+  downRecoverPercent: 70
+  takeProfitPercent: 15
+  stopLossPercent: 15
+  buyAmountUsdt: 100.00
+
 logging:
   level:
-    root: DEBUG
-
-trade:
-  sellAmountPercent: 50
-  priceDiffPercent: 50
-  buyAmountUsdt: 50
+    root: INFO

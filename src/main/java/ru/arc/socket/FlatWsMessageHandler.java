@@ -20,6 +20,6 @@ public class FlatWsMessageHandler extends AbstractWebSocketHandler {
     ) throws Exception {
         final var currencyUpdate = objectMapper.readValue(message.getPayload(), CurrencyUpdate.class);
         System.out.println(currencyUpdate.symbol + " " + currencyUpdate.direction);
-        tradeService.performAction(currencyUpdate.symbol, currencyUpdate.direction);
+        tradeService.performAction(currencyUpdate);
     }
 }
