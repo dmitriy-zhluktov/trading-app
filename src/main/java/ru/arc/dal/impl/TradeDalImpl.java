@@ -4,6 +4,7 @@ import com.bybit.api.client.domain.CategoryType;
 import com.bybit.api.client.domain.TradeOrderType;
 import com.bybit.api.client.domain.account.AccountType;
 import com.bybit.api.client.domain.account.request.AccountDataRequest;
+import com.bybit.api.client.domain.market.MarketInterval;
 import com.bybit.api.client.domain.market.request.MarketDataRequest;
 import com.bybit.api.client.domain.trade.OrderFilter;
 import com.bybit.api.client.domain.trade.Side;
@@ -15,6 +16,7 @@ import com.bybit.api.client.restApi.BybitApiTradeRestClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import ru.arc.dal.TradeDal;
+import ru.arc.service.model.Candle;
 import ru.arc.service.model.CoinTicker;
 import ru.arc.service.model.Order;
 import ru.arc.service.model.OrderResult;
@@ -261,6 +263,26 @@ public class TradeDalImpl implements TradeDal {
         final var result = ((LinkedHashMap<?, ?>) rs).get("result");
         final var walletList = ((LinkedHashMap<?, ?>) result).get("list");
         return objectMapper.convertValue(((List<?>) walletList).get(0), WalletBalance.class);
+    }
+
+    @Override
+    public List<Candle> retrieveCandles(
+            final String coin,
+            final String quote,
+            final String interval,
+            final Long startTime,
+            final Long endTime
+    ) {
+        final var rq = MarketDataRequest.builder()
+                .category(CategoryType.SPOT)
+                .symbol(coin + quote)
+                .marketInterval(MarketInterval.FIVE_MINUTES)
+                .start(startTime)
+                .end(endTime)
+                .limit(24)
+                .build();
+        final var rs = marketClient.getMarketLinesData(rq);
+        return null;
     }
 
     private String scalePrice(

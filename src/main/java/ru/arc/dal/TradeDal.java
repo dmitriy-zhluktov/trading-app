@@ -1,5 +1,6 @@
 package ru.arc.dal;
 
+import ru.arc.service.model.Candle;
 import ru.arc.service.model.Order;
 import ru.arc.service.model.OrderResult;
 import ru.arc.service.model.SpotCoinInstruments;
@@ -63,4 +64,12 @@ public interface TradeDal {
     );
 
     WalletBalance retrieveWalletBalance();
+
+    List<Candle> retrieveCandles(
+            String coin,
+            String quote,
+            String interval,
+            Long startTime,
+            Long endTime
+    );
 }

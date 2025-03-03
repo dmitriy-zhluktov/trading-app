@@ -2,6 +2,7 @@ package ru.arc.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import ru.arc.config.properties.TradeProperties;
 import ru.arc.dal.TradeDal;
 import ru.arc.service.TradeService;
@@ -12,6 +13,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 @RequiredArgsConstructor
+@Slf4j
 public final class TradeServiceImpl implements TradeService {
 
     private final TradeDal dal;
